@@ -1,3 +1,7 @@
+September 15, 2026: 
+Forked from the collaborated original.
+Will add basic frontend UI for Upload and basic image detection through Onnx 
+
 Dataset = https://www.kaggle.com/datasets/simuletic/cctv-weapon-dataset
 Annotation website = https://labelstud.io/
 
