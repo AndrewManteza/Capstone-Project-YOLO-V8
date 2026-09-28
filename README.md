@@ -1,3 +1,9 @@
+September 26, 2026 Added new pictures without guns for the validation set. Used latest trained run for testing. 
+Accuracy:  0.8955
+Precision: 0.9492
+Recall:    0.8358
+F1 Score:  0.8889
+
 September 15, 2026: 
 Forked from the collaborated original.
 Will add basic frontend UI for Upload and basic image detection through Onnx 
