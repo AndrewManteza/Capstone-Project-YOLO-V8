@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weapon Detection Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12151a; --panel:#1b1f26; --panel-2:#20252d; --border:#2a2f38;
+    --text:#e7e6e1; --muted:#868c97; --alert:#e3543b; --safe:#4c9f70;
+    --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{min-height:100vh;display:flex;justify-content:center;padding:48px 20px;}
+  .wrap{width:100%;max-width:560px;}
+  .kicker{font-family:var(--mono);font-size:13px;color:var(--muted);letter-spacing:0.02em;margin-bottom:6px;}
+  h1{font-size:26px;margin:0 0 8px;font-weight:600;}
+  .sub{color:var(--muted);font-size:14px;line-height:1.5;margin-bottom:28px;}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .panel + .panel{margin-top:16px;}
+
+  .drop{
+    padding:36px 20px;text-align:center;cursor:pointer;border:1px dashed var(--border);
+    margin:14px;border-radius:8px;transition:border-color .15s ease, background .15s ease;
+  }
+  .drop.drag{border-color:var(--muted);background:var(--panel-2);}
+  .drop svg{opacity:.6;margin-bottom:10px;}
+  .drop-title{font-size:15px;margin-bottom:4px;}
+  .drop-sub{font-size:12px;color:var(--muted);font-family:var(--mono);}
+  input[type=file]{display:none;}
+
+  .preview-area{padding:14px;display:none;}
+  .preview-area.show{display:block;}
+  canvas{width:100%;display:block;border-radius:6px;background:#000;}
+
+  .row{display:flex;gap:10px;padding:0 14px 14px;}
+  button{
+    font-family:var(--sans);font-size:14px;font-weight:600;border:none;border-radius:7px;
+    padding:11px 16px;cursor:pointer;flex:1;
+  }
+  .btn-primary{background:var(--text);color:var(--bg);}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+
+  details{padding:14px;}
+  summary{cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .field{margin-top:10px;}
+  .field label{display:block;font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:6px;}
+  .field input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:9px 10px;font-family:var(--mono);font-size:13px;
+  }
+  .field input:focus{outline:1px solid var(--muted);}
+
+  .status{font-family:var(--mono);font-size:12px;color:var(--muted);padding:0 14px 14px;min-height:16px;}
+
+  .verdict{display:none;margin:14px;padding:16px;border-radius:8px;border:1px solid var(--border);}
+  .verdict.show{display:block;}
+  .verdict.alert{border-color:var(--alert);background:rgba(227,84,59,.08);}
+  .verdict.safe{border-color:var(--safe);background:rgba(76,159,112,.08);}
+  .verdict-label{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);margin-bottom:6px;}
+  .verdict-title{font-size:19px;font-weight:600;margin-bottom:4px;}
+  .verdict.alert .verdict-title{color:var(--alert);}
+  .verdict.safe .verdict-title{color:var(--safe);}
+  .verdict-detail{font-size:13px;color:var(--muted);font-family:var(--mono);}
+
+  @media (max-width:480px){ h1{font-size:22px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">DETECTION CONSOLE</div>
+  <h1>Weapon detection scanner</h1>
+  <p class="sub">Upload an image and it's sent to your YOLOv8 model's API for analysis. The result shows whether a weapon was detected, with confidence and bounding boxes.</p>
+
+  <div class="panel">
+    <div class="drop" id="drop">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      <div class="drop-title">Drop an image, or click to choose</div>
+      <div class="drop-sub">JPG or PNG</div>
+      <input type="file" id="file" accept="image/*">
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="row">
+      <button class="btn-primary" id="scanBtn" disabled>Scan image</button>
+      <button class="btn-ghost" id="clearBtn">Clear</button>
+    </div>
+    <div class="status" id="status"></div>
+
+    <details>
+      <summary>API endpoint settings</summary>
+      <div class="field">
+        <label for="apiUrl">Backend URL (e.g. https://username-space.hf.space/predict)</label>
+        <input type="text" id="apiUrl" placeholder="https://your-backend-url/predict">
+      </div>
+    </details>
+  </div>
+
+  <div class="verdict" id="verdict">
+    <div class="verdict-label">RESULT</div>
+    <div class="verdict-title" id="verdictTitle"></div>
+    <div class="verdict-detail" id="verdictDetail"></div>
+  </div>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const previewArea = document.getElementById('previewArea');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const scanBtn = document.getElementById('scanBtn');
+const clearBtn = document.getElementById('clearBtn');
+const statusEl = document.getElementById('status');
+const verdict = document.getElementById('verdict');
+const verdictTitle = document.getElementById('verdictTitle');
+const verdictDetail = document.getElementById('verdictDetail');
+const apiUrlInput = document.getElementById('apiUrl');
+
+let currentImage = null;
+let currentFile = null;
+
+try {
+  const saved = localStorage.getItem('scanner_api_url');
+  if (saved) apiUrlInput.value = saved;
+} catch(e) {}
+apiUrlInput.addEventListener('change', () => {
+  try { localStorage.setItem('scanner_api_url', apiUrlInput.value.trim()); } catch(e) {}
+});
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('drag');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file){
+  if (!file.type.startsWith('image/')) { setStatus('Please choose an image file.'); return; }
+  currentFile = file;
+  const img = new Image();
+  img.onload = () => {
+    currentImage = img;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    previewArea.classList.add('show');
+    scanBtn.disabled = false;
+    verdict.classList.remove('show','alert','safe');
+    setStatus('Ready to scan.');
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+clearBtn.addEventListener('click', () => {
+  currentImage = null; currentFile = null;
+  previewArea.classList.remove('show');
+  scanBtn.disabled = true;
+  verdict.classList.remove('show','alert','safe');
+  setStatus('');
+  fileInput.value = '';
+});
+
+function setStatus(msg){ statusEl.textContent = msg; }
+
+scanBtn.addEventListener('click', async () => {
+  const apiUrl = apiUrlInput.value.trim();
+  if (!apiUrl) { setStatus('Set your backend URL in "API endpoint settings" first.'); return; }
+  if (!currentFile) return;
+
+  scanBtn.disabled = true;
+  setStatus('Sending image to model…');
+  verdict.classList.remove('show','alert','safe');
+
+  try {
+    const formData = new FormData();
+    formData.append('image', currentFile);
+
+    const res = await fetch(apiUrl, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('Server responded with ' + res.status);
+    const data = await res.json();
+
+    const detections = data.detections || data.predictions || [];
+    const weaponHits = detections.filter(d =>
+      /gun|weapon|pistol|rifle|knife/i.test(d.label || d.class || d.name || '')
+    );
+
+    // Redraw base image, then overlay boxes
+    ctx.drawImage(currentImage, 0, 0);
+    detections.forEach(d => {
+      const box = d.box || d.bbox || d.xyxy;
+      if (!box) return;
+      const [x1, y1, x2, y2] = box;
+      const isWeapon = weaponHits.includes(d);
+      ctx.strokeStyle = isWeapon ? '#e3543b' : '#4c9f70';
+      ctx.lineWidth = Math.max(2, currentImage.width / 300);
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+      const label = (d.label || d.class || d.name || '') + ' ' + Math.round((d.confidence||d.score||0)*100) + '%';
+      ctx.font = Math.max(14, currentImage.width / 40) + 'px monospace';
+      const textW = ctx.measureText(label).width + 8;
+      ctx.fillStyle = isWeapon ? '#e3543b' : '#4c9f70';
+      ctx.fillRect(x1, Math.max(0, y1 - 20), textW, 20);
+      ctx.fillStyle = '#12151a';
+      ctx.fillText(label, x1 + 4, Math.max(14, y1 - 5));
+    });
+
+    verdict.classList.add('show');
+    if (weaponHits.length > 0) {
+      verdict.classList.add('alert');
+      const top = weaponHits.sort((a,b)=>(b.confidence||b.score||0)-(a.confidence||a.score||0))[0];
+      verdictTitle.textContent = 'Weapon detected';
+      verdictDetail.textContent = weaponHits.length + ' match(es) — top confidence ' + Math.round((top.confidence||top.score||0)*100) + '%';
+    } else {
+      verdict.classList.add('safe');
+      verdictTitle.textContent = 'No weapon detected';
+      verdictDetail.textContent = detections.length + ' object(s) found in image';
+    }
+    setStatus('Scan complete.');
+  } catch (err) {
+    setStatus('Couldn\'t reach the backend: ' + err.message + '. Check the API URL and that your server allows CORS from this page.');
+  } finally {
+    scanBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

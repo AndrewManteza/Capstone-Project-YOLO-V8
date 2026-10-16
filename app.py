@@ -7,10 +7,10 @@ from ultralytics import YOLO
 app = Flask(__name__)
 CORS(app)  # allows your GitHub Pages frontend (a different domain) to call this API
 
-# Path to your trained weights. Copy your best.pt into this folder,
+# Path to your trained weights. Copy gun_detector_best.pt into this folder,
 # or set the MODEL_PATH environment variable to point elsewhere.
-MODEL_PATH = os.environ.get("MODEL_PATH", "best.pt")
-CONFIDENCE_THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", 0.4))
+MODEL_PATH = os.environ.get("MODEL_PATH", "gun_detector_best.pt")
+CONFIDENCE_THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", 0.5))
 
 model = YOLO(MODEL_PATH)
 
@@ -31,7 +31,7 @@ def predict():
     except Exception:
         return jsonify({"error": "Could not read the uploaded file as an image."}), 400
 
-    results = model.predict(image, conf=CONFIDENCE_THRESHOLD, iou=0.4, verbose=False)
+    results = model.predict(image, conf=CONFIDENCE_THRESHOLD, iou=0.4, max_det=5, agnostic_nms=True, verbose=False)
     result = results[0]
     names = result.names  # dict of class id -> class name, from your dataset/classes.txt
 

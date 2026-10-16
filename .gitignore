@@ -1,6 +1,11 @@
 .venv/
 venv_cuda/
-dataset/*.pt
+datasets/
+db/
+docs/
+runs/
+archive/
+dataset/
 runs/
 archive/
 archive (1).zip
