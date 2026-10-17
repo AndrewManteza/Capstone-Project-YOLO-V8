@@ -4,7 +4,7 @@ Front end working on github pages.
 Need back end to process may need to open hugging face. 
 Also need to change front end to not have the API form 
 
-
+https://andrewmanteza.github.io/Capstone-Project-YOLO-V8/
 
 
 <<<<<<< HEAD
