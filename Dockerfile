@@ -1,5 +1,10 @@
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=10000 \
+    YOLO_CONFIG_DIR=/tmp/Ultralytics
+
 WORKDIR /app
 
 # OpenCV (used internally by ultralytics) needs these system libraries
@@ -8,16 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# CPU-only PyTorch: far smaller and faster to build than the default CUDA build
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt ./
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 7860
-ENV PORT=7860
-ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
+EXPOSE 10000
 
-CMD ["python", "app.py"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT} --workers 1 app:app"]
